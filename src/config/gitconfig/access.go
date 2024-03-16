@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"regexp"
 	"strings"
 
 	"github.com/git-town/git-town/v12/src/config/configdomain"
@@ -21,6 +22,8 @@ type Access struct {
 	Runner
 }
 
+var branchConfigPattern = regexp.MustCompile(`^git-town-branch\.(?P<name>.+)\.(?P<attribute>.+)$`)
+
 // LoadLocal reads the global Git Town configuration that applies to the entire machine.
 func (self *Access) LoadGlobal() (SingleSnapshot, configdomain.PartialConfig, error) {
 	return self.load(true)
@@ -32,13 +35,18 @@ func (self *Access) LoadLocal() (SingleSnapshot, configdomain.PartialConfig, err
 }
 
 func AddKeyToPartialConfig(key Key, value string, config *configdomain.PartialConfig) error {
-	if strings.HasPrefix(key.String(), "git-town-branch.") {
+	branchConfigMatch := branchConfigPattern.FindStringSubmatch(key.String())
+	if branchConfigMatch != nil {
 		if config.Lineage == nil {
 			config.Lineage = &configdomain.Lineage{}
 		}
-		child := gitdomain.NewLocalBranchName(strings.TrimSuffix(strings.TrimPrefix(key.String(), "git-town-branch."), ".parent"))
-		parent := gitdomain.NewLocalBranchName(value)
-		(*config.Lineage)[child] = parent
+
+		child := gitdomain.NewLocalBranchName(branchConfigMatch[branchConfigPattern.SubexpIndex("name")])
+		if branchConfigMatch[branchConfigPattern.SubexpIndex("attribute")] == "parent" {
+			parent := gitdomain.NewLocalBranchName(value)
+			(*config.Lineage)[child] = parent
+		}
+
 		return nil
 	}
 	var err error
