@@ -17,7 +17,8 @@ import (
 
 // Config provides type-safe access to Git Town configuration settings
 // stored in the local and global Git configuration.
-type Config struct {
+type 
+Config struct {
 	ConfigFile      *configdomain.PartialConfig // content of git-town.toml, nil = no config file exists
 	DryRun          bool
 	FullConfig      configdomain.FullConfig    // the merged configuration data
@@ -195,6 +196,13 @@ func (self *Config) SetOriginHostname(hostName configdomain.HostingOriginHostnam
 // SetParent marks the given branch as the direct parent of the other given branch
 // in the Git Town configuration.
 func (self *Config) SetParent(branch, parentBranch gitdomain.LocalBranchName) error {
+	return self.SetLineage(branch, configdomain.Parent{
+		Name: parentBranch,
+		Base: 
+	})
+}
+
+func (self *Config) SetLineage(branch gitdomain.LocalBranchName, parentBranch configdomain.Parent) error {
 	if self.DryRun {
 		return nil
 	}

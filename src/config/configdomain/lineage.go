@@ -11,15 +11,20 @@ import (
 // Lineage encapsulates all data and functionality around parent branches.
 // branch --> its parent
 // Lineage only contains branches that have ancestors.
-type Lineage map[gitdomain.LocalBranchName]gitdomain.LocalBranchName
+type Lineage map[gitdomain.LocalBranchName]Parent
+
+type Parent struct {
+	Name gitdomain.LocalBranchName
+	Base gitdomain.SHA
+}
 
 // Ancestors provides the names of all parent branches of the branch with the given name.
 func (self Lineage) Ancestors(branch gitdomain.LocalBranchName) gitdomain.LocalBranchNames {
 	current := branch
 	result := gitdomain.LocalBranchNames{}
 	for {
-		parent, found := self[current]
-		if !found {
+		parent := self.Parent(current)
+		if parent.IsEmpty() {
 			return result
 		}
 		result = append(gitdomain.LocalBranchNames{parent}, result...)
@@ -55,7 +60,7 @@ func (self Lineage) BranchesAndAncestors(branchNames gitdomain.LocalBranchNames)
 func (self Lineage) Children(branch gitdomain.LocalBranchName) gitdomain.LocalBranchNames {
 	result := gitdomain.LocalBranchNames{}
 	for child, parent := range self {
-		if parent == branch {
+		if parent.Name == branch {
 			result = append(result, child)
 		}
 	}
@@ -77,8 +82,8 @@ func (self Lineage) HasParents(branch gitdomain.LocalBranchName) bool {
 func (self Lineage) IsAncestor(ancestor, other gitdomain.LocalBranchName) bool {
 	current := other
 	for {
-		parent, found := self[current]
-		if !found {
+		parent := self.Parent(current)
+		if parent.IsEmpty() {
 			return false
 		}
 		if parent == ancestor {
@@ -114,7 +119,7 @@ func (self Lineage) OrderHierarchically(branches gitdomain.LocalBranchNames) {
 func (self Lineage) Parent(branch gitdomain.LocalBranchName) gitdomain.LocalBranchName {
 	for child, parent := range self {
 		if child == branch {
-			return parent
+			return parent.Name
 		}
 	}
 	return gitdomain.EmptyLocalBranchName()
@@ -122,9 +127,9 @@ func (self Lineage) Parent(branch gitdomain.LocalBranchName) gitdomain.LocalBran
 
 // RemoveBranch removes the given branch completely from this lineage.
 func (self Lineage) RemoveBranch(branch gitdomain.LocalBranchName) {
-	parent := self.Parent(branch)
+	parent, hasParent := self[branch]
 	for _, childName := range self.Children(branch) {
-		if parent.IsEmpty() {
+		if !hasParent {
 			delete(self, childName)
 		} else {
 			self[childName] = parent
@@ -136,12 +141,25 @@ func (self Lineage) RemoveBranch(branch gitdomain.LocalBranchName) {
 // Roots provides the branches with children and no parents.
 func (self Lineage) Roots() gitdomain.LocalBranchNames {
 	roots := gitdomain.LocalBranchNames{}
-	for _, parent := range self {
-		_, found := self[parent]
-		if !found && !slice.Contains(roots, parent) {
+	for _, parent := range self.BranchNames() {
+		if !self.HasParents(parent) && !slice.Contains(roots, parent) {
 			roots = append(roots, parent)
 		}
 	}
 	roots.Sort()
 	return roots
+}
+
+// SetParent sets a child's parent branch, overriding the previous parent.
+func (self Lineage) SetParent(child, parent gitdomain.LocalBranchName) {
+	currentParent := self[child]
+	currentParent.Name = parent
+	self[child] = currentParent
+}
+
+// SetBase sets a child parent's base, overriding the previous base.
+func (self Lineage) SetBase(child gitdomain.LocalBranchName, base gitdomain.SHA) {
+	currentParent := self[child]
+	currentParent.Base = base
+	self[child] = currentParent
 }

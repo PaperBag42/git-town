@@ -19,8 +19,8 @@ func KnowsBranchAncestors(branch gitdomain.LocalBranchName, args KnowsBranchAnce
 	updated := false
 	for {
 		lineage := args.Backend.Config.FullConfig.Lineage
-		parent, hasParent := lineage[currentBranch]
-		if !hasParent { //nolint:nestif
+		parent := lineage.Parent(currentBranch)
+		if parent.IsEmpty() { //nolint:nestif
 			var aborted bool
 			var err error
 			parent, aborted, err = dialog.Parent(dialog.ParentArgs{

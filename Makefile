@@ -45,12 +45,12 @@ fix: tools/rta@${RTA_VERSION} tools/node_modules  # runs all linters and auto-fi
 	tools/rta dprint fmt --config dprint-changelog.json
 	${CURDIR}/tools/node_modules/.bin/prettier --write '**/*.yml'
 	tools/rta shfmt -f . | grep -v tools/node_modules | grep -v '^vendor/' | xargs tools/rta shfmt --write
-	tools/rta shfmt -f . | grep -v tools/node_modules | grep -v '^vendor/' | xargs tools/rta --include-path --optional shellcheck
+	tools/rta shfmt -f . | grep -v tools/node_modules | grep -v '^vendor/' | xargs tools/rta --optional shellcheck
 	${CURDIR}/tools/node_modules/.bin/gherkin-lint
 	tools/rta actionlint
 	@make --no-print-directory golangci-lint
 	tools/ensure_no_files_with_dashes.sh
-	tools/rta ghokin fmt replace features/
+	tools/rta ghokin@3.5.0 fmt replace features/
 	tools/rta --available alphavet && go vet "-vettool=$(shell tools/rta --which alphavet)" $(shell go list ./... | grep -v src/cmd | grep -v /v11/tools/)
 	@make --no-print-directory deadcode
 

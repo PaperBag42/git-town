@@ -3,7 +3,7 @@ package gitconfig
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
+	"regexp"
 
 	"github.com/git-town/git-town/v12/src/config/configdomain"
 	"github.com/git-town/git-town/v12/src/git/gitdomain"
@@ -111,6 +111,8 @@ var keys = []Key{ //nolint:gochecknoglobals
 	KeySyncUpstream,
 }
 
+var BranchConfigPattern = regexp.MustCompile(`^git-town-branch\.(?P<name>.+)\.(?P<attribute>.+)$`)
+
 func AliasableCommandForKey(key Key) *configdomain.AliasableCommand {
 	for _, aliasableCommand := range configdomain.AllAliasableCommands() {
 		if KeyForAliasableCommand(aliasableCommand) == key {
@@ -158,6 +160,10 @@ func NewParentKey(branch gitdomain.LocalBranchName) Key {
 	return Key(fmt.Sprintf("git-town-branch.%s.parent", branch))
 }
 
+func NewBaseKey(branch gitdomain.LocalBranchName) Key {
+	return Key(fmt.Sprintf("git-town-branch.%s.base", branch))
+}
+
 func ParseKey(name string) *Key {
 	for _, configKey := range keys {
 		if configKey.String() == name {
@@ -178,7 +184,7 @@ func ParseKey(name string) *Key {
 }
 
 func parseLineageKey(key string) *Key {
-	if !strings.HasPrefix(key, "git-town-branch.") || !strings.HasSuffix(key, ".parent") {
+	if !BranchConfigPattern.MatchString(key) {
 		return nil
 	}
 	result := Key(key)
